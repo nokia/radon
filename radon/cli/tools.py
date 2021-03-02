@@ -253,7 +253,6 @@ def iter_filenames(paths, exclude=None, ignore=None):
         yield '-'
         return
     exclude = exclude.split(',') if exclude else []
-    ignore = '.*,{0}'.format(ignore).split(',') if ignore else ['.*']
     for path in paths:
         if (
             os.path.isfile(path)
@@ -273,10 +272,17 @@ def explore_directories(start, exclude, ignore):
     '''Explore files and directories under `start`. `explore` and `ignore`
     arguments are the same as in :func:`iter_filenames`.
     '''
+    ignore_paths = [(os.path.abspath(i.strip()) + os.sep) for i in ignore.split(',')]
+
     for root, dirs, files in os.walk(start):
-        dirs[:] = list(filter_out(dirs, ignore))
         fullpaths = (os.path.normpath(os.path.join(root, p)) for p in files)
         for filename in filter_out(fullpaths, exclude):
+            abs_file = os.path.abspath(filename)
+            if any(abs_file.startswith(i) for i in ignore_paths):
+                continue
+            if any(fnmatch.fnmatch(filename, i) for i in ignore):
+                continue
+
             if not os.path.basename(filename).startswith(
                 '.'
             ) and _is_python_file(filename):
